@@ -108,13 +108,30 @@ func (db *DB) UpdateJobListing(job_id string, jobInfo model.UpdateJobListingInpu
 
 	_id, _ := primitive.ObjectIDFromHex(job_id)
 	filter := bson.M{"_id": _id}
-	update := bson{"$set": updateJobInfo}
+	update := bson.M{"$set": updateJobInfo}
+
+	results := job_col.FindOneAndUpdate(ctx, filter, update, options.FindOneAndUpdate().SetReturnDocument(1))
 
 	var job_listig model.JobListing
+	if err := results.Decode(&job_listig); err != nil {
+		log.Fatal(err)
+	}
 	return &job_listig
 }
 
 func (db *DB) DeleteJobListing(job_id string) *model.DeleteJobResponse {
+	job_col := db.client.Database("graph").Collection("jobs")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	_id, _ := primitive.ObjectIDFromHex(job_id)
+	filter := bson.M{"_id": _id}
+	_, err := job_col.DeleteOne(ctx, filter)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	return &model.DeleteJobResponse{
 		DeleteJobID: job_id,
 	}
